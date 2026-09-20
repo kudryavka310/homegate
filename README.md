@@ -26,8 +26,6 @@ HomeGateは、Discordからスマートロックへのアクセスを管理す�
 
 Secret値はHomeGateの画面へ入力せず、Cloudflare Dashboardだけに保存します。HTML、URL、ログへSecretを表示しません。Discord Applicationの作成とInteractions Endpoint URLの保存は、Discord公式画面での操作として残しています。
 
-この作業フォルダには公開リポジトリURLがまだないため、Deploy ButtonのURLは[`docs/deploy.html`](docs/deploy.html)の1箇所だけに置いています。公開者が実際の公開GitHubまたはGitLab URLへ置き換えてから配布してください。
-
 ### E2E確認
 
 実環境での確認項目は[`docs/e2e-checklist.md`](docs/e2e-checklist.md)にまとめています。
