@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HomeGateをCloudflareへデプロイ</title>
+  <style>
+    body { max-width: 720px; margin: 3rem auto; padding: 0 1rem; font: 16px/1.7 system-ui, sans-serif; }
+    .button { display: inline-block; padding: .7rem 1rem; border-radius: .5rem; background: #f38020; color: #fff; font-weight: 700; text-decoration: none; }
+    .note { padding: 1rem; border-left: 4px solid #f38020; background: #f3802018; }
+  </style>
+</head>
+<body>
+  <h1>HomeGate</h1>
+  <p>Node.js、npm、Wrangler、Git、ターミナルは不要です。Cloudflareにログインして、ブラウザだけで自分のアカウントへWorkerを配置します。</p>
+  <!-- 配布する公開GitHub/GitLabリポジトリへ公開前にURLを置き換える。 -->
+  <p><a class="button" href="https://deploy.workers.cloudflare.com/?url=https%3A%2F%2Fgithub.com%2FYOUR_ORG%2Fhomegate">Deploy to Cloudflare</a></p>
+  <p class="note">このリンクを製品として配布する前に、URL中の <code>YOUR_ORG/homegate</code> を実際の公開GitHubまたはGitLabリポジトリへ置き換えてください。Cloudflare公式ボタンは公開リポジトリが必要です。</p>
+  <h2>デプロイ後</h2>
+  <p>作成されたWorkerの <code>/setup</code> を開くと、DiscordのPublic KeyをCloudflare DashboardのSecretへ入力する手順が表示されます。SecretやTokenをHomeGateのフォーム、URL、HTML、ログへ送ることはありません。</p>
+</body>
+</html>
