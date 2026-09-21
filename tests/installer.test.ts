@@ -1,6 +1,6 @@
 ﻿import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createWorker } from "../src/index";
+import { createInstallerWorker } from "../src/installer-entry";
 
 const accountId = "a".repeat(32);
 const env = {
@@ -24,7 +24,7 @@ function cookieHeader(response: Response, name: string): string {
 }
 
 test("OAuth start uses Cloudflare Authorization Code + PKCE and does not expose verifier", async () => {
-  const response = await createWorker().fetch(new Request("https://installer.example.test/oauth/start"), env);
+  const response = await createInstallerWorker().fetch(new Request("https://installer.example.test/oauth/start"), env);
   assert.equal(response.status, 302);
   const location = new URL(response.headers.get("location") ?? "");
   assert.equal(location.origin, "https://dash.cloudflare.com");
@@ -53,7 +53,7 @@ test("OAuth callback validates state and keeps the Cloudflare token out of HTML"
     }
     throw new Error(`unexpected URL: ${url}`);
   };
-  const worker = createWorker(undefined, fetch, fetcher);
+  const worker = createInstallerWorker(fetcher);
   const start = await worker.fetch(new Request("https://installer.example.test/oauth/start"), env);
   const authUrl = new URL(start.headers.get("location") ?? "");
   const callback = await worker.fetch(new Request(`https://installer.example.test/oauth/callback?code=authorization-code&state=${encodeURIComponent(authUrl.searchParams.get("state") ?? "")}`, {
@@ -93,7 +93,7 @@ test("account selection checks worker collision, uploads a bundle, and enables w
     }
     throw new Error(`unexpected URL: ${url}`);
   };
-  const worker = createWorker(undefined, fetch, fetcher);
+  const worker = createInstallerWorker(fetcher);
   const start = await worker.fetch(new Request("https://installer.example.test/oauth/start"), env);
   const authUrl = new URL(start.headers.get("location") ?? "");
   const callback = await worker.fetch(new Request(`https://installer.example.test/oauth/callback?code=authorization-code&state=${encodeURIComponent(authUrl.searchParams.get("state") ?? "")}`, {
@@ -150,7 +150,7 @@ test("new accounts receive a workers.dev subdomain only when none exists", async
 test("OAuth callback rejects a state mismatch before calling Cloudflare", async () => {
   let calls = 0;
   const fetcher: typeof fetch = async () => { calls++; return new Response("unexpected", { status: 500 }); };
-  const worker = createWorker(undefined, fetch, fetcher);
+  const worker = createInstallerWorker(fetcher);
   const start = await worker.fetch(new Request("https://installer.example.test/oauth/start"), env);
   const response = await worker.fetch(new Request("https://installer.example.test/oauth/callback?code=authorization-code&state=wrong", {
     headers: { Cookie: cookieHeader(start, "__Host-homegate_oauth") },
@@ -162,7 +162,7 @@ test("OAuth callback rejects a state mismatch before calling Cloudflare", async 
 test("OAuth callback rejects a redirect URI origin change before token exchange", async () => {
   let calls = 0;
   const fetcher: typeof fetch = async () => { calls++; return new Response("unexpected", { status: 500 }); };
-  const worker = createWorker(undefined, fetch, fetcher);
+  const worker = createInstallerWorker(fetcher);
   const start = await worker.fetch(new Request("https://installer.example.test/oauth/start"), env);
   const authUrl = new URL(start.headers.get("location") ?? "");
   const response = await worker.fetch(new Request(`https://other-installer.example.test/oauth/callback?code=authorization-code&state=${encodeURIComponent(authUrl.searchParams.get("state") ?? "")}`, {
@@ -182,7 +182,7 @@ test("existing Worker names are rejected before upload", async () => {
     if (init.method === "PUT") uploadCalls++;
     return new Response("unexpected", { status: 500 });
   };
-  const worker = createWorker(undefined, fetch, fetcher);
+  const worker = createInstallerWorker(fetcher);
   const start = await worker.fetch(new Request("https://installer.example.test/oauth/start"), env);
   const authUrl = new URL(start.headers.get("location") ?? "");
   const callback = await worker.fetch(new Request(`https://installer.example.test/oauth/callback?code=authorization-code&state=${encodeURIComponent(authUrl.searchParams.get("state") ?? "")}`, {
@@ -208,7 +208,7 @@ test("Cloudflare permission errors are presented without API details or tokens",
     if (url.startsWith("https://api.cloudflare.com/client/v4/accounts?")) return new Response(JSON.stringify({ success: false, errors: [{ message: "raw secret or token" }] }), { status: 403 });
     return new Response("unexpected", { status: 500 });
   };
-  const worker = createWorker(undefined, fetch, fetcher);
+  const worker = createInstallerWorker(fetcher);
   const start = await worker.fetch(new Request("https://installer.example.test/oauth/start"), env);
   const authUrl = new URL(start.headers.get("location") ?? "");
   const response = await worker.fetch(new Request(`https://installer.example.test/oauth/callback?code=authorization-code&state=${encodeURIComponent(authUrl.searchParams.get("state") ?? "")}`, {

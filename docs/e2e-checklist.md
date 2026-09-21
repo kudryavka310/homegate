@@ -11,6 +11,7 @@
 - [ ] OAuth Clientのscopeが`account.read`、`workers-platform.read`、`workers-platform.write`だけになっている
 - [ ] Installerへ`CLOUDFLARE_OAUTH_CLIENT_ID`、`HOMEGATE_OAUTH_STATE_SECRET`、`HOMEGATE_BUNDLE_URL`を設定した
 - [ ] `HOMEGATE_BUNDLE_URL`のbundleがHTTPSで取得できる
+- [ ] `HOMEGATE_BUNDLE_URL`が`releases/0.1.0/homegate.js`を指している
 - [ ] リポジトリに`.env`、`.dev.vars`、Bot Token、Client Secret、Cloudflare Account IDなどの実値がない
 - [ ] Cloudflare Accountへブラウザでログインできる
 - [ ] Discord Developer Portalへブラウザでログインできる
@@ -37,6 +38,14 @@
 - [ ] Deploy Buttonの公開リポジトリURLが正しい
 - [ ] Deploy Buttonは一般利用者向けの標準導線に表示していない
 
+## Bundle分離
+
+- [ ] `npm run build`で`dist/installer.js`が生成される
+- [ ] `npm run build`で`dist/homegate.js`が生成される
+- [ ] `releases/0.1.0/homegate.js`が生成される
+- [ ] `dist/homegate.js`にCloudflare OAuth URL、Token endpoint、Worker upload API、Installer Cookie、`/install`系ルートが含まれない
+- [ ] `dist/installer.js`にOAuth開始、Callback、Account選択、Worker upload処理が含まれる
+
 ## Worker画面
 
 `https://<Worker URL>/`を開き、次を確認します。
@@ -47,6 +56,7 @@
 - [ ] 画面にSecret値そのものが表示されない
 - [ ] `DISCORD_PUBLIC_KEY`、`DISCORD_CLIENT_ID`、`DISCORD_CLIENT_SECRET`の設定状態が表示される
 - [ ] 未実施のEndpointやServer Installationが完了済みと表示されない
+- [ ] Runtime Workerの`/install`、`/oauth/start`、`/oauth/callback`、`/install/account`が404になる
 
 ## Discord設定
 

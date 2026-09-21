@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "homegate",
-  "main": "src/homegate-entry.ts",
+  "name": "homegate-installer",
+  "main": "src/installer-entry.ts",
   "compatibility_date": "2026-09-20",
   "workers_dev": true
 }

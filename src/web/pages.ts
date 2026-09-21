@@ -40,11 +40,6 @@ export function homePage(): Response {
     <h1>HomeGate</h1>
     <p>Discordからスマートロックを操作するCloudflare Workerです。現在は安全確認用のMock Lock Serviceを使用しています。</p>
     <div class="card">
-      <h2>Cloudflareからインストール</h2>
-      <p>公開Installerを利用する場合は、Cloudflare OAuthでAccountを選択してWorkerを作成できます。</p>
-      <p><a class="button" href="/install">Cloudflareで続行</a></p>
-    </div>
-    <div class="card">
       <h2>ブラウザだけでセットアップ</h2>
       <p>Node.js、npm、Wrangler、Git、ターミナルは、利用者のセットアップには必要ありません。</p>
       <p><a class="button" href="/setup">初期設定を始める</a></p>

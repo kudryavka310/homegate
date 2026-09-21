@@ -5,9 +5,13 @@
   "type": "module",
   "engines": { "node": ">=22.17.0" },
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "build": "wrangler deploy --dry-run --outdir dist",
+    "dev": "wrangler dev --config wrangler.homegate.jsonc",
+    "deploy": "wrangler deploy --config wrangler.homegate.jsonc --keep-vars",
+    "build": "npm run build:bundles && npm run verify:bundles",
+    "build:bundles": "node scripts/build-bundles.mjs",
+    "verify:bundles": "node scripts/verify-bundles.mjs",
+    "deploy:installer": "wrangler deploy --config wrangler.installer.jsonc --keep-vars",
+    "deploy:homegate": "wrangler deploy --config wrangler.homegate.jsonc --keep-vars",
     "typecheck": "tsc --noEmit && tsc --project tsconfig.tools.json --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "register:commands": "tsx --env-file=.env scripts/register-commands.ts"
@@ -22,21 +26,13 @@
       },
       "DISCORD_CLIENT_SECRET": {
         "description": "Discord OAuth2のClient Secret。Cloudflare Secretにだけ保存し、Workerのレスポンスやログへ出しません。"
-      },
-      "CLOUDFLARE_OAUTH_CLIENT_ID": {
-        "description": "HomeGate InstallerのPublic Cloudflare OAuth Client ID。秘密値ではありません。"
-      },
-      "HOMEGATE_OAUTH_STATE_SECRET": {
-        "description": "HomeGate InstallerのOAuth state・PKCEセッションを暗号化する32文字以上のSecret。"
-      },
-      "HOMEGATE_BUNDLE_URL": {
-        "description": "事前ビルドしたHomeGate Worker JavaScript bundleを配布するHTTPS URL。"
       }
     }
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260918.1",
     "@types/node": "^22.0.0",
+    "esbuild": "^0.28.2",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0",
     "wrangler": "^4.0.0"

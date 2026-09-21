@@ -34,6 +34,19 @@ Secret値はHomeGateの画面へ入力せず、Cloudflare Dashboardだけに保�
 
 DiscordのSlash CommandをCloudflare Workerで受け、Mockの鍵を操作するPoCです。Gatewayへの常時接続や常駐Botサーバーは使いません。利用者自身のCloudflareアカウントに配置します。
 
+構成は2つのWorkerに分かれます。
+
+```text
+HomeGate Installer（運営側）
+  Cloudflare OAuth / Account選択 / Worker作成 / bundle配布
+
+HomeGate Runtime（利用者側）
+  / /setup /setup/discord /discord/interactions /interactions
+  Discord署名検証 / Slash Command / Mock Lock Service
+```
+
+利用者側のRuntime bundleにはInstallerのOAuthやWorker upload機能を含めません。
+
 ### Advanced / Developer installation
 
 OAuth Installerを使わない開発者向けのフォールバックです。一般利用者の標準導入には使いません。
@@ -63,24 +76,30 @@ SESAME API、D1/KV、ユーザー管理、Permission Engine、一時アクセス
 
 ```text
 src/
-  index.ts                    HTTP入口・構成検証・エラー処理・サービス注入
+  homegate-entry.ts           Runtime Workerのentrypoint
+  installer-entry.ts          Installer Workerのentrypoint
+  index.ts                    Runtime entrypoint互換export
   discord/
     verify.ts                 生の本文とtimestampに対するEd25519署名検証
     commands.ts               Slash Command定義
     interaction.ts            コマンドからLockServiceを呼ぶルーター
   services/lock-service.ts     LockService契約とMock実装
   types/discord.ts            Interaction型と入力検証
-  web/pages.ts                トップ、初期設定、Discord設定画面
-  web/installer-pages.ts      OAuth Installer、Account選択、完了画面
-  installer/oauth.ts          Cloudflare OAuth PKCE、API、Workerアップロード
+  web/pages.ts                Runtimeのトップ、初期設定、Discord設定画面
+  web/installer-pages.ts      InstallerのAccount選択、完了画面
+  installer/oauth.ts          Installer専用のOAuth PKCE、API、Workerアップロード
+dist/installer.js              Installer Worker bundle
+dist/homegate.js               Runtime Worker bundle
+releases/0.1.0/homegate.js     公開するRuntime release bundle
   discord/command-registration.ts  Client CredentialsとDiscord REST API登録
 scripts/register-commands.ts   テストサーバーへのコマンド登録
 tests/                        署名・異常系・Workers実行環境の統合テスト
 docs/deploy.html              利用者向けDeploy Button配布ページ
 docs/e2e-checklist.md         公開・実環境E2Eの手順と未確認項目
-wrangler.jsonc                Worker設定
-.dev.vars.example             Workerローカル設定の雛形
-.env.example                  Deploy Button／Worker Secretの雛形
+  wrangler*.jsonc               Runtime / Installer別Worker設定
+  .dev.vars.example             Runtimeローカル設定の雛形
+  .env.example                  Runtime Worker Secretの雛形
+  .env.installer.example        Installer Worker設定の雛形
 .env.register.example         開発者のコマンド登録用設定の雛形
 ```
 
@@ -97,21 +116,27 @@ Cloudflare公式のOAuth Clientは、2026年現在、ブラウザ主体のPublic
 - Required scopes: `account.read`、`workers-platform.read`、`workers-platform.write`
 - Client URLのドメイン検証を完了してからPublicへ変更
 
-運営者が公開するInstaller Workerの`/install`がOAuthと初期アップロードだけを担当します。インストール後のDiscordやHomeGateの通常通信は、利用者のCloudflare Accountに作成されたWorkerだけで完結し、Installerを経由しません。
+運営者が公開するInstaller Workerの`/install`がOAuthと初期アップロードだけを担当します。インストール後のDiscordやHomeGateの通常通信は、利用者のCloudflare Accountに作成されたRuntime Workerだけで完結し、Installerを経由しません。Runtime Workerの`/install`、`/oauth/start`、`/oauth/callback`、`/install/account`は404になります。
 
 Installer Workerには、Cloudflare DashboardのVariables and Secretsで次を設定します。
 
-このInstaller Workerの公開と下記の運営者設定は一度だけ必要です。運営者は開発者向けの`npm run deploy`またはCloudflare Dashboardを使って公開します。一般利用者はこれらを実行しません。
+このInstaller Workerの公開と下記の運営者設定は一度だけ必要です。運営者は`npm run deploy:installer`またはCloudflare Dashboardを使って公開します。一般利用者はこれらを実行しません。
 
 | Variable / Secret | 内容 |
 | --- | --- |
 | `CLOUDFLARE_OAUTH_CLIENT_ID` | Public OAuth ClientのClient ID。秘密値ではありません。 |
 | `HOMEGATE_OAUTH_STATE_SECRET` | 32文字以上のランダム値。OAuth state、PKCE verifier、短期セッションCookieの暗号化に使うSecret。 |
-| `HOMEGATE_BUNDLE_URL` | 事前ビルドしたHomeGate Worker JavaScript bundleを配布するHTTPS URL。InstallerはこのURLを固定設定からのみ取得します。 |
+| `HOMEGATE_BUNDLE_URL` | `homegate.js`を配布するHTTPS URL。InstallerはこのURLを固定設定からのみ取得します。 |
 
-`HOMEGATE_BUNDLE_URL`が未設定の場合、OAuth認可やCloudflare Accountの選択は実行できますが、Worker作成時に停止します。bundleをGitHubから利用者に取得させる方式ではありません。運営者のHTTPS配布先（Cloudflare Pages、R2公開URLなど）へリリース成果物を配置してください。
+`HOMEGATE_BUNDLE_URL`には、公開リリースの次のURLを設定します。
 
-開発者は`npm run build`で生成される`dist/index.js`をbundle配布先へ公開し、そのHTTPS URLを`HOMEGATE_BUNDLE_URL`へ設定します。利用者がこのbundleを取得したり、GitHubへログインしたりすることはありません。
+```text
+https://raw.githubusercontent.com/kudryavka310/homegate/master/releases/0.1.0/homegate.js
+```
+
+bundleをGitHubから利用者に取得させる方式ではありません。Installerが運営者の固定HTTPS URLから取得してCloudflare APIへアップロードします。
+
+`npm run build`は`dist/installer.js`、`dist/homegate.js`を生成し、`dist/homegate.js`を`releases/0.1.0/homegate.js`へコピーします。利用者がこのbundleを取得したり、GitHubへログインしたりすることはありません。
 
 Installerが実行するCloudflare API操作は、Account一覧取得、Worker名の存在確認、Worker Scriptの新規アップロード、workers.dev有効化、Accountのworkers.devサブドメイン取得です。サブドメインが未作成のAccountでは、`homegate-`接頭辞のランダム名を一度だけ作成します。DNS、Routes、Domains、D1、KVは変更しません。既存Worker名は事前確認し、`If-None-Match: *`を付けて上書きを避けます。
 
@@ -123,7 +148,7 @@ Installerが実行するCloudflare API操作は、Account一覧取得、Worker�
 npm ci
 ```
 
-`.dev.vars.example`を`.dev.vars`にコピーし、Discord Developer PortalのApplication Public Key（64桁の16進数）を設定します。ファイルコピーはエディタやファイルマネージャーでも構いません。`.env.example`には、Worker SecretとOAuth Installer設定の雛形を置いています。
+`.dev.vars.example`を`.dev.vars`にコピーし、Discord Developer PortalのApplication Public Key（64桁の16進数）を設定します。ファイルコピーはエディタやファイルマネージャーでも構いません。Runtime WorkerのSecretは`.env.example`、Installer Workerの設定は`.env.installer.example`に分けています。
 
 ```dotenv
 DISCORD_PUBLIC_KEY=YOUR_APPLICATION_PUBLIC_KEY
@@ -147,7 +172,7 @@ npm run build
 
 `npm test`は一時的なEd25519鍵ペアでリクエストを署名します。実際のDiscordやCloudflareの認証情報は不要です。WranglerのローカルWorkers実行環境でPING、4コマンド、施錠・解錠後の状態、偽署名の拒否を確認し、単体テストで本文・timestamp改ざん、期限切れ、入力不正、内部エラーの秘匿も確認します。
 
-`npm run build`はデプロイのdry runです。`dist/`にバンドルを出力し、クラウドには公開しません。Windows PowerShellの実行ポリシーでnpmが止まる場合は、開発用コマンドの`npm`を`npm.cmd`に置き換えてください。
+`npm run build`はInstallerとRuntimeのES module bundleを`dist/`へ出力し、Runtime bundleにInstaller文字列が含まれないことを検査します。クラウドには公開しません。Windows PowerShellの実行ポリシーでnpmが止まる場合は、開発用コマンドの`npm`を`npm.cmd`に置き換えてください。
 
 ## DiscordとCloudflareの初期設定
 
@@ -184,11 +209,11 @@ npm run register:commands
 
 ### 4. 自分のCloudflareアカウントへ配置する
 
-`wrangler.jsonc`の`name`が既存の別Workerと衝突しないことを確認し、必要なら名前を変更します。以下は開発者向け手順です。
+Runtime Workerを開発者のCloudflareアカウントへ配置する手順です。Installer Workerとは別のentrypointを使います。
 
 ```sh
 npx wrangler login
-npm run deploy
+npm run deploy:homegate
 npx wrangler secret put DISCORD_PUBLIC_KEY
 ```
 
@@ -202,7 +227,18 @@ Secret入力プロンプトに、手順1のPublic Keyを入力します。最初
 
 Public Key自体は公開鍵ですが、このPoCでは指定どおりSecretとして管理します。SESAME API KeyとDiscord Bot TokenはWorkerに設定しません。Client Secretを設定する場合も、`wrangler.jsonc`の`vars`やソースへ埋め込まずSecretに保存します。
 
-### 5. Interactions Endpoint URLを設定する
+### 5. Installer Workerを公開する
+
+運営者だけが実行します。Installerは`src/installer-entry.ts`から作成され、RuntimeのDiscord処理や通常利用経路を含みません。
+
+```sh
+npm run build
+npm run deploy:installer
+```
+
+公開後、Installer WorkerのVariables and Secretsへ`.env.installer.example`の3項目を設定します。`HOMEGATE_BUNDLE_URL`は`releases/0.1.0/homegate.js`を指すHTTPS URLにしてください。
+
+### 6. Interactions Endpoint URLを設定する
 
 deployの出力にあるURLに`/discord/interactions`を付けます（旧`/interactions`も互換のため受け付けます）。
 
@@ -212,7 +248,7 @@ https://homegate.<YOUR_SUBDOMAIN>.workers.dev/discord/interactions
 
 Developer Portal → General Information → Interactions Endpoint URLに入力して保存します。Discordの署名付きPINGへ`{"type":1}`を返せれば保存できます。保存できない場合は、Public Keyが同じApplicationのものか、Secretを設定済みか、URLのパスが正しいか確認してください。
 
-### 6. Discordで確認する
+### 7. Discordで確認する
 
 Worker URLの`/setup/discord`を開き、「4コマンドを登録・確認」を押します。公式にClient Credentialsが対応しているグローバルコマンドAPIで登録状態を確認できます。Interactions Endpoint URLとPublic Keyの一致は、Discord Developer Portalで保存するときの署名付きPING検証で確認します。次に「DiscordサーバーへAppを追加」から`applications.commands`だけ、権限0でインストールします。Developer PortalでEndpoint URLを保存した後、テストサーバーのチャンネルで`/ping`、`/status`、`/unlock`、`/status`、`/lock`、`/status`の順で実行します。コマンドが出ない場合はアプリのインストール先、ユーザーの「アプリコマンドを使う」権限、グローバル反映時間を確認してください。Mockの状態は前述のとおり複数インスタンス間では共有されません。
 
@@ -226,7 +262,7 @@ Worker URLの`/setup/discord`を開き、「4コマンドを登録・確認」�
 - Mockは即時応答します。実機APIなどで処理が長くなる際には、Discordの初回応答期限に合わせたdeferred responseと後続応答を追加してください。
 - Workerの実行コードはWeb標準APIのみで、ローカルOS、Node.js、ファイルシステムへの依存はありません。Node.jsとWranglerは開発ツールです。
 - 販売者の中央サーバーへ鍵情報を送る処理はありません。将来のSESAME等の秘密情報も利用者自身のCloudflare環境に保存する前提です。
-- エンドユーザーの標準導入はCloudflare OAuth Installerの`/install`、作成後の初期設定は各Workerの`/setup`、`/setup/discord`でブラウザから進められます。Deploy Buttonと`docs/deploy.html`はAdvanced / Developer installationとして残します。Discord Applicationの作成とInteractions Endpoint URLの保存は公式画面での手動操作として残しています。最終利用者にNode.js、npm、Wrangler、Git、ターミナルを要求しません。
+- エンドユーザーの標準導入は運営側HomeGate Installerの`/install`、作成後の初期設定は利用者側Runtime Workerの`/setup`、`/setup/discord`でブラウザから進められます。Installer bundleとRuntime bundleは別entrypoint・別artifactです。Deploy Buttonと`docs/deploy.html`はRuntime向けのAdvanced / Developer installationとして残します。Discord Applicationの作成とInteractions Endpoint URLの保存は公式画面での手動操作として残しています。最終利用者にNode.js、npm、Wrangler、Git、ターミナルを要求しません。
 
 ## 公式資料
 
@@ -245,4 +281,3 @@ Worker URLの`/setup/discord`を開き、「4コマンドを登録・確認」�
 - [Cloudflare OAuth integration endpoints](https://developers.cloudflare.com/fundamentals/oauth/integrate-with-cloudflare/)
 - [Cloudflare Workers Script Upload API](https://developers.cloudflare.com/api/resources/workers/subresources/scripts/methods/update/)
 - [Cloudflare Workers multipart upload metadata](https://developers.cloudflare.com/workers/configuration/multipart-upload-metadata/)
-
