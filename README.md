@@ -13,18 +13,16 @@ HomeGateは、Discordからスマートロックへのアクセスを管理す�
 
 ### 導入手順
 
-1. 次のDeploy to Cloudflareボタンを押します。Cloudflareへログインし、作成先AccountとWorker名を選びます。既存のWorker、DNS、ドメイン、D1、KVは変更しません。
+1. HomeGate公式Installerの「Cloudflareで続行」を押し、Cloudflareへログインします。
+2. Cloudflareの認可画面で、インストール先のAccountと要求権限を確認して許可します。
+3. Account選択画面でWorkerを作成するAccountを選び、Worker名（既定値`homegate`）を指定します。同名Workerがある場合は上書きされません。
+4. InstallerがWorkerを作成し、事前ビルド済みのHomeGate bundleをアップロードしてworkers.devを有効にします。
+5. 完了画面の「セットアップを続ける」から、作成されたHomeGate Workerの`/setup`を開きます。
+6. Discord Developer PortalでApplicationを作成し、`/setup`の案内に沿ってDiscord設定を完了します。
 
-   [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https%3A%2F%2Fgithub.com%2Fkudryavka310%2Fhomegate)
-2. Discord Developer PortalでApplicationを作成します。
-3. Cloudflare DashboardのWorker → Settings → Variables and Secretsに、Discord画面で取得した3つの値をSecretとして保存します。
-   - `DISCORD_PUBLIC_KEY`
-   - `DISCORD_CLIENT_ID`
-   - `DISCORD_CLIENT_SECRET`
-4. Worker URLの`/setup/discord`を開き、画面の案内に沿ってコマンドを登録します。
-5. 画面に表示されたInteractions Endpoint URLをDiscord Developer Portalへ貼り付けて保存します。
-6. 画面のリンクからDiscord ServerへAppを追加します。要求する権限は0です。
-7. Discordで`/ping`を実行します。`HomeGate is running.`が表示されれば完了です。
+標準導入ではGitHub、GitLab、Git、Node.js、npm、Wrangler、Docker、ターミナル、PowerShell、bashを使いません。Installerは利用者のCloudflare Access TokenをDBやログへ保存せず、インストール処理中だけ暗号化された短期セッションで扱います。
+
+Installerがまだ公開されていない環境では、開発者向けのDeploy ButtonをAdvanced installationとして利用できます。一般利用者向けの標準導線ではありません。
 
 Secret値はHomeGateの画面へ入力せず、Cloudflare Dashboardだけに保存します。HTML、URL、ログへSecretを表示しません。Discord Applicationの作成とInteractions Endpoint URLの保存は、Discord公式画面での操作として残しています。
 
@@ -35,6 +33,12 @@ Secret値はHomeGateの画面へ入力せず、Cloudflare Dashboardだけに保�
 ## 開発者向け
 
 DiscordのSlash CommandをCloudflare Workerで受け、Mockの鍵を操作するPoCです。Gatewayへの常時接続や常駐Botサーバーは使いません。利用者自身のCloudflareアカウントに配置します。
+
+### Advanced / Developer installation
+
+OAuth Installerを使わない開発者向けのフォールバックです。一般利用者の標準導入には使いません。
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https%3A%2F%2Fgithub.com%2Fkudryavka310%2Fhomegate)
 
 ```text
 Discord → POST /interactions → Ed25519署名検証 → Command Router → LockService → Mock
@@ -67,6 +71,8 @@ src/
   services/lock-service.ts     LockService契約とMock実装
   types/discord.ts            Interaction型と入力検証
   web/pages.ts                トップ、初期設定、Discord設定画面
+  web/installer-pages.ts      OAuth Installer、Account選択、完了画面
+  installer/oauth.ts          Cloudflare OAuth PKCE、API、Workerアップロード
   discord/command-registration.ts  Client CredentialsとDiscord REST API登録
 scripts/register-commands.ts   テストサーバーへのコマンド登録
 tests/                        署名・異常系・Workers実行環境の統合テスト
@@ -78,6 +84,37 @@ wrangler.jsonc                Worker設定
 .env.register.example         開発者のコマンド登録用設定の雛形
 ```
 
+## Cloudflare OAuth Installer（運営者向け）
+
+Cloudflare公式のOAuth Clientは、2026年現在、ブラウザ主体のPublic ClientではAuthorization Code + PKCE（S256、token endpoint authentication `none`）を使います。HomeGate Installerもこの方式を使い、利用者のCloudflare Access Tokenを永続保存しません。
+
+運営者はCloudflare DashboardのManage Account → OAuth clientsでPublic OAuth Clientを作成し、次を設定します。
+
+- Response type: `code`
+- Grant type: `authorization_code`
+- Token endpoint authentication: `none`
+- Redirect URL: `https://<installer-host>/oauth/callback`
+- Required scopes: `account.read`、`workers-platform.read`、`workers-platform.write`
+- Client URLのドメイン検証を完了してからPublicへ変更
+
+運営者が公開するInstaller Workerの`/install`がOAuthと初期アップロードだけを担当します。インストール後のDiscordやHomeGateの通常通信は、利用者のCloudflare Accountに作成されたWorkerだけで完結し、Installerを経由しません。
+
+Installer Workerには、Cloudflare DashboardのVariables and Secretsで次を設定します。
+
+このInstaller Workerの公開と下記の運営者設定は一度だけ必要です。運営者は開発者向けの`npm run deploy`またはCloudflare Dashboardを使って公開します。一般利用者はこれらを実行しません。
+
+| Variable / Secret | 内容 |
+| --- | --- |
+| `CLOUDFLARE_OAUTH_CLIENT_ID` | Public OAuth ClientのClient ID。秘密値ではありません。 |
+| `HOMEGATE_OAUTH_STATE_SECRET` | 32文字以上のランダム値。OAuth state、PKCE verifier、短期セッションCookieの暗号化に使うSecret。 |
+| `HOMEGATE_BUNDLE_URL` | 事前ビルドしたHomeGate Worker JavaScript bundleを配布するHTTPS URL。InstallerはこのURLを固定設定からのみ取得します。 |
+
+`HOMEGATE_BUNDLE_URL`が未設定の場合、OAuth認可やCloudflare Accountの選択は実行できますが、Worker作成時に停止します。bundleをGitHubから利用者に取得させる方式ではありません。運営者のHTTPS配布先（Cloudflare Pages、R2公開URLなど）へリリース成果物を配置してください。
+
+開発者は`npm run build`で生成される`dist/index.js`をbundle配布先へ公開し、そのHTTPS URLを`HOMEGATE_BUNDLE_URL`へ設定します。利用者がこのbundleを取得したり、GitHubへログインしたりすることはありません。
+
+Installerが実行するCloudflare API操作は、Account一覧取得、Worker名の存在確認、Worker Scriptの新規アップロード、workers.dev有効化、Accountのworkers.devサブドメイン取得です。サブドメインが未作成のAccountでは、`homegate-`接頭辞のランダム名を一度だけ作成します。DNS、Routes、Domains、D1、KVは変更しません。既存Worker名は事前確認し、`If-None-Match: *`を付けて上書きを避けます。
+
 ## 開発者のローカル環境
 
 開発者のみNode.js 22.17以上とnpmを用意してください。プロジェクトフォルダで実行します。
@@ -86,7 +123,7 @@ wrangler.jsonc                Worker設定
 npm ci
 ```
 
-`.dev.vars.example`を`.dev.vars`にコピーし、Discord Developer PortalのApplication Public Key（64桁の16進数）を設定します。ファイルコピーはエディタやファイルマネージャーでも構いません。`.env.example`には、Deploy Buttonで入力できるPublic Key、Application ID、OAuth2 Client Secretの項目を置いています。
+`.dev.vars.example`を`.dev.vars`にコピーし、Discord Developer PortalのApplication Public Key（64桁の16進数）を設定します。ファイルコピーはエディタやファイルマネージャーでも構いません。`.env.example`には、Worker SecretとOAuth Installer設定の雛形を置いています。
 
 ```dotenv
 DISCORD_PUBLIC_KEY=YOUR_APPLICATION_PUBLIC_KEY
@@ -189,7 +226,7 @@ Worker URLの`/setup/discord`を開き、「4コマンドを登録・確認」�
 - Mockは即時応答します。実機APIなどで処理が長くなる際には、Discordの初回応答期限に合わせたdeferred responseと後続応答を追加してください。
 - Workerの実行コードはWeb標準APIのみで、ローカルOS、Node.js、ファイルシステムへの依存はありません。Node.jsとWranglerは開発ツールです。
 - 販売者の中央サーバーへ鍵情報を送る処理はありません。将来のSESAME等の秘密情報も利用者自身のCloudflare環境に保存する前提です。
-- エンドユーザーのDeployと初期設定は、`docs/deploy.html` のDeploy Button、`/setup`、`/setup/discord`でブラウザから進められます。Discord Applicationの作成とInteractions Endpoint URLの保存は公式画面での手動操作として残しています。最終利用者にNode.js、npm、Wrangler、Git、ターミナルを要求しません。
+- エンドユーザーの標準導入はCloudflare OAuth Installerの`/install`、作成後の初期設定は各Workerの`/setup`、`/setup/discord`でブラウザから進められます。Deploy Buttonと`docs/deploy.html`はAdvanced / Developer installationとして残します。Discord Applicationの作成とInteractions Endpoint URLの保存は公式画面での手動操作として残しています。最終利用者にNode.js、npm、Wrangler、Git、ターミナルを要求しません。
 
 ## 公式資料
 
@@ -203,4 +240,9 @@ Worker URLの`/setup/discord`を開き、「4コマンドを登録・確認」�
 - [Discord Application管理API](https://docs.discord.com/developers/resources/application)
 - [Cloudflare Workers Secrets](https://developers.cloudflare.com/workers/configuration/secrets/)
 - [Workers Web Crypto](https://developers.cloudflare.com/workers/runtime-apis/web-crypto/)
+- [Cloudflare OAuth Applications](https://developers.cloudflare.com/fundamentals/oauth/)
+- [Cloudflare OAuth client creation and PKCE](https://developers.cloudflare.com/fundamentals/oauth/create-an-oauth-client/)
+- [Cloudflare OAuth integration endpoints](https://developers.cloudflare.com/fundamentals/oauth/integrate-with-cloudflare/)
+- [Cloudflare Workers Script Upload API](https://developers.cloudflare.com/api/resources/workers/subresources/scripts/methods/update/)
+- [Cloudflare Workers multipart upload metadata](https://developers.cloudflare.com/workers/configuration/multipart-upload-metadata/)
 

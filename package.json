@@ -22,6 +22,15 @@
       },
       "DISCORD_CLIENT_SECRET": {
         "description": "Discord OAuth2のClient Secret。Cloudflare Secretにだけ保存し、Workerのレスポンスやログへ出しません。"
+      },
+      "CLOUDFLARE_OAUTH_CLIENT_ID": {
+        "description": "HomeGate InstallerのPublic Cloudflare OAuth Client ID。秘密値ではありません。"
+      },
+      "HOMEGATE_OAUTH_STATE_SECRET": {
+        "description": "HomeGate InstallerのOAuth state・PKCEセッションを暗号化する32文字以上のSecret。"
+      },
+      "HOMEGATE_BUNDLE_URL": {
+        "description": "事前ビルドしたHomeGate Worker JavaScript bundleを配布するHTTPS URL。"
       }
     }
   },

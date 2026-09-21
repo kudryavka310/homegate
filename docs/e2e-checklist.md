@@ -6,23 +6,36 @@
 
 ## 事前条件
 
-- [ ] `docs/deploy.html`のDeploy Button URLを、実際の公開GitHubまたはGitLabリポジトリへ置き換えた
+- [ ] Cloudflare OAuth Clientを作成し、Public化に必要なClient URLのドメイン検証を完了した
+- [ ] OAuth ClientのRedirect URLが`https://<Installer host>/oauth/callback`になっている
+- [ ] OAuth Clientのscopeが`account.read`、`workers-platform.read`、`workers-platform.write`だけになっている
+- [ ] Installerへ`CLOUDFLARE_OAUTH_CLIENT_ID`、`HOMEGATE_OAUTH_STATE_SECRET`、`HOMEGATE_BUNDLE_URL`を設定した
+- [ ] `HOMEGATE_BUNDLE_URL`のbundleがHTTPSで取得できる
 - [ ] リポジトリに`.env`、`.dev.vars`、Bot Token、Client Secret、Cloudflare Account IDなどの実値がない
-- [ ] GitHub/GitLabリポジトリがPublicになっている
 - [ ] Cloudflare Accountへブラウザでログインできる
 - [ ] Discord Developer Portalへブラウザでログインできる
 - [ ] テスト用Discord ServerでAppを追加できる権限がある
 
-## Deploy Button
+## Cloudflare OAuth Installer
 
-- [ ] 配布ページを開ける
-- [ ] Deploy to Cloudflareを押せる
+- [ ] Installerの`/install`を開ける
+- [ ] 「Cloudflareで続行」からCloudflare OAuth同意画面へ遷移できる
+- [ ] OAuth同意画面にAccount選択と要求scopeが表示される
+- [ ] Authorization Code + PKCE（S256）でCallbackが完了する
 - [ ] CloudflareのAccount選択画面で、利用者のAccountを選べる
 - [ ] Worker名を確認・変更できる（既定値は`homegate`）
-- [ ] `DISCORD_PUBLIC_KEY`をDeploy画面またはDashboardのSecretとして入力できる
-- [ ] `DISCORD_CLIENT_ID`と`DISCORD_CLIENT_SECRET`を、コマンド登録用Secretとして入力できる
+- [ ] 同名Workerがある場合に上書きせずエラーになる
+- [ ] Worker bundleがScript Upload APIへアップロードされる
+- [ ] Accountにworkers.devサブドメインがない場合、`homegate-`接頭辞のサブドメインが作成される
+- [ ] workers.devが有効になり、完了画面にWorker URLが表示される
 - [ ] 既存のWorker、DNS、ドメイン、D1、KVが変更されていない
 - [ ] Worker作成が完了する
+
+## Deploy Button（Advanced / Developer installation）
+
+- [ ] OAuth Installerが利用できない場合だけ、`docs/deploy.html`のDeploy Buttonを開ける
+- [ ] Deploy Buttonの公開リポジトリURLが正しい
+- [ ] Deploy Buttonは一般利用者向けの標準導線に表示していない
 
 ## Worker画面
 
@@ -91,4 +104,4 @@ npm.cmd test
 npm.cmd run build
 ```
 
-実アカウントを使った項目が未実施のままの場合は、公開報告で「未確認」と記載してください。
+Installerの実OAuth、実AccountへのWorker作成、bundle配布、workers.dev有効化は、資格情報を設定した担当者が実アカウントで実施します。未実施のままの場合は、公開報告で「未確認」と記載してください。

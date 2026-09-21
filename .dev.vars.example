@@ -3,3 +3,8 @@ DISCORD_PUBLIC_KEY=replace_with_application_public_key
 # Optional: enables /setup/discord command registration using Discord Client Credentials.
 DISCORD_CLIENT_ID=replace_with_application_id
 DISCORD_CLIENT_SECRET=replace_with_oauth2_client_secret
+# Installer-only settings. Keep the state secret in Cloudflare Secret and publish
+# a prebuilt JavaScript Worker bundle at the HTTPS URL below.
+CLOUDFLARE_OAUTH_CLIENT_ID=replace_with_homegate_public_oauth_client_id
+HOMEGATE_OAUTH_STATE_SECRET=replace_with_a_random_32_character_installer_secret
+HOMEGATE_BUNDLE_URL=https://your-homegate-cdn.example/homegate-worker.js

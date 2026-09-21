@@ -12,10 +12,9 @@
 </head>
 <body>
   <h1>HomeGate</h1>
-  <p>Node.js、npm、Wrangler、Git、ターミナルは不要です。Cloudflareにログインして、ブラウザだけで自分のアカウントへWorkerを配置します。</p>
-  <!-- 配布する公開GitHub/GitLabリポジトリへ公開前にURLを置き換える。 -->
+  <p>これはHomeGateのAdvanced / Developer installationです。一般利用者向けの標準導入はCloudflare OAuth Installerを使用します。</p>
   <p><a class="button" href="https://deploy.workers.cloudflare.com/?url=https%3A%2F%2Fgithub.com%2Fkudryavka310%2Fhomegate">Deploy to Cloudflare</a></p>
-  <p class="note">このリンクを製品として配布する前に、URL中の <code>https://github.com/kudryavka310/homegate</code> を実際の公開GitHubまたはGitLabリポジトリへ置き換えてください。Cloudflare公式ボタンは公開リポジトリが必要です。</p>
+  <p class="note">Deploy Buttonは公開リポジトリを使う開発者向けのフォールバックです。一般利用者にはGitHubアカウントを要求しないCloudflare OAuth Installerを案内してください。</p>
   <h2>デプロイ後</h2>
   <p>作成されたWorkerの <code>/setup</code> を開くと、DiscordのPublic KeyをCloudflare DashboardのSecretへ入力する手順が表示されます。SecretやTokenをHomeGateのフォーム、URL、HTML、ログへ送ることはありません。</p>
 </body>
