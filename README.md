@@ -1,4 +1,4 @@
-# HomeGate
+﻿# HomeGate
 
 ## HomeGate利用者向け（ブラウザのみ）
 
@@ -13,7 +13,9 @@ HomeGateは、Discordからスマートロックへのアクセスを管理す�
 
 ### 導入手順
 
-1. [`docs/deploy.html`](docs/deploy.html)を開き、Deploy to Cloudflareを押します。Cloudflareへログインし、作成先AccountとWorker名を選びます。既存のWorker、DNS、ドメイン、D1、KVは変更しません。
+1. 次のDeploy to Cloudflareボタンを押します。Cloudflareへログインし、作成先AccountとWorker名を選びます。既存のWorker、DNS、ドメイン、D1、KVは変更しません。
+
+   [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https%3A%2F%2Fgithub.com%2Fkudryavka310%2Fhomegate)
 2. Discord Developer PortalでApplicationを作成します。
 3. Cloudflare DashboardのWorker → Settings → Variables and Secretsに、Discord画面で取得した3つの値をSecretとして保存します。
    - `DISCORD_PUBLIC_KEY`
@@ -201,3 +203,4 @@ Worker URLの`/setup/discord`を開き、「4コマンドを登録・確認」�
 - [Discord Application管理API](https://docs.discord.com/developers/resources/application)
 - [Cloudflare Workers Secrets](https://developers.cloudflare.com/workers/configuration/secrets/)
 - [Workers Web Crypto](https://developers.cloudflare.com/workers/runtime-apis/web-crypto/)
+
